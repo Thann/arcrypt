@@ -72,19 +72,24 @@ format_drive () {
 	# Prepare bootloader
 	pacstrap /mnt base grub efibootmgr
 	genfstab -U /mnt >> /mnt/etc/fstab
-	#TODO: /etc/mkinicpio.conf
-	# HOOKS=(base udev autodetect keyboard keymap consolefont modconf block encrypt lvm2 resume filesystems fsck)
-	# FILES=(/crypto_keyfile.bin)
-	#TODO: /etc/default/grub
+	# Edit /etc/mkinitcpio.conf
+	InitHooks="HOOKS=(base udev autodetect keyboard keymap consolefont modconf block encrypt lvm2 resume filesystems fsck)"
+	InitFile="FILES=(/crypto_keyfile.bin)"
+	sed -i "s/^HOOKS=.*/$InitHooks/" /mnt/etc/mkinitcpio.conf
+	sed -i "s/^FILES=.*/$InitFile/" /mnt/etc/mkinitcpio.conf
+	# Edit /etc/default/grub
 	LVM_BLKID=`lsblk "$DRIVE"4 -o UUID |grep "$DRIVE"4 | awk '{print $NF}'`
-	# GRUB_CMDLINE_LINUX="cryptdevice=UUID=$LVM_BLKID:cryptlvm resume=/dev/$VOL_GROUP/swap"
-	# GRUB_ENABLE_CRYPTODISK=y
+	GRUB_CMD="GRUB_CMDLINE_LINUX=\"cryptdevice=UUID=$LVM_BLKID:cryptlvm resume=/dev/$VOL_GROUP/swap\""
+	GRUB_CRYPTO="GRUB_ENABLE_CRYPTODISK=y"
+	sed -i "s/^GRUB_CMDLINE_LINUX=.*/$GRUB_CMD/" /mnt/etc/default/grub
+	sed -i "s/^#GRUB_ENABLE_CRYPTODISK=.*/$GRUB_CRYPTO/" /mnt/etc/default/grub
 	echo "cryptboot ${2}3 /crypto_keyfile.bin luks" >> /mnt/etc/crypttab
 
-	# Install bootloader
 	arch-chroot /mnt
-	#TODO: microcode?
-	# cat /proc/cpuinfo | grep -q GenuineIntel && pacman -Syu intel-ucode
+	# Install microcode updates
+	cat /proc/cpuinfo | grep -q GenuineIntel && pacman -Syu intel-ucode
+	cat /proc/cpuinfo | grep -q AuthenticAMD && pacman -Syu amd-ucode
+	# Install bootloaders
 	grub-mkconfig -o /boot/grub/grub.cfg
 	grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ARCH --recheck
 	grub-install --target=i386-pc --recheck "$DRIVE"
