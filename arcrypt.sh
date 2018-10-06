@@ -1,8 +1,13 @@
 #!/bin/bash
+# Easy ArchLinux install with full-disk encryption.
 
+DRIVE="$2"
 SWAP_SIZE?=16G
-VOL_GROUP?=MyVolGroup
-LVM_BLKID=`lsblk "$2"4 -o UUID |grep "$2"4 | awk '{print $NF}'`
+VOL_GROUP?=Arcrypt
+SHRED_ITERATIONS?=1
+
+# Exit on any error
+set -o errexit
 
 print_usage () {
 	echo "Usage: "
@@ -10,25 +15,36 @@ print_usage () {
 	echo "   arcrypt.sh mount  /dev/sdX"
 }
 mount_drive () {
- 	echo " ---- Mounting $2 --"
-	cryptsetup open "$2"4 cryptlvm
+	echo " ---- Mounting $DRIVE --"
+	cryptsetup open "$DRIVE"4 cryptlvm
 	mount /dev/$VOL_GROUP/root /mnt
 	swapon /dev/$VOL_GROUP/swap
-	cryptsetup open "$2"4 cryptboot --key-file /mnt/crypto_keyfile.bin
+	cryptsetup open "$DRIVE"4 cryptboot --key-file /mnt/crypto_keyfile.bin
 	mount /dev/mapper/cryptboot /mnt/boot
-	mount "$2"2 /mnt/efi
+	mount "$DRIVE"2 /mnt/efi
 }
 format_drive () {
 	#TODO: explode if files in /mnt
-	echo " ---- Formatting $2 --"
-	echo `lsblk | grep $2`;
-	echo " ---- Are you sure????"
-	#TODO: confirm
-	#TODO: gdisk
+	echo " ---- Formatting $DRIVE --"
+	gdisk -l "$DRIVE"
+	echo -n ' ---- Are you sure????   type "YES" to confirm: '
+	_CONFIRM=""
+	read _CONFIRM
+	if [ "$_CONFIRM" != "YES" ]; then exit 1; fi
+
+	# Wipe and format drive
+	shred -v -n$SHRED_ITERATIONS -z "$DRIVE"
+	sgdisk -o "$DRIVE"
+	sgdisk -n 1:0:+1M -t 1:ef02 -c 1:"BIOS Boot Partition" "$DRIVE"
+	sgdisk -n 2:0:+550M -t 2:ef00 -c 2:"EFI System Partition" "$DRIVE"
+	sgdisk -n 3:0:+200M -t 3:8300 -c 3:"Boot partition" "$DRIVE"
+	sgdisk -n 4:0:0 -t 4:8e00 -c 4:"$VOL_GROUP LVM" "$DRIVE"
+	sgdisk -p "$DRIVE"
+
 	# Prepare main partition
 	echo "Set your crypto disk password"
-	cryptsetup luksFormat --type luks2 "$2"4
-	cryptsetup open "$2"4 cryptlvm
+	cryptsetup luksFormat --type luks2 "$DRIVE"4
+	cryptsetup open "$DRIVE"4 cryptlvm
 	pvcreate /dev/mapper/cryptlvm
 	vgcreate $VOL_GROUP /dev/mapper/cryptlvm
 	lvcreate -L $SWAP_SIZE $VOL_GROUP -n swap
@@ -41,44 +57,46 @@ format_drive () {
 	# Prepare boot partition
 	dd bs=512 count=4 if=/dev/urandom of=/mnt/crypto_keyfile.bin
 	chmod 000 /crypto_keyfile.bin
-	cryptsetup luksAddKey "$2"4 /mnt/crypto_keyfile.bin
-	cryptsetup luksFormat "$2"3 --key-file /mnt/crypto_keyfile.bin
-	cryptsetup open "$2"3 cryptboot --key-file /mnt/crypto_keyfile.bin
+	cryptsetup luksAddKey "$DRIVE"4 /mnt/crypto_keyfile.bin
+	cryptsetup luksFormat "$DRIVE"3 --key-file /mnt/crypto_keyfile.bin
+	cryptsetup open "$DRIVE"3 cryptboot --key-file /mnt/crypto_keyfile.bin
 	mkfs.ext4 /dev/mapper/cryptboot
 	mkdir /mnt/boot
 	mount /dev/mapper/cryptboot /mnt/boot
 
 	# Preare efi partition
-	mkfs.fat -F32 "$2"2
+	mkfs.fat -F32 "$DRIVE"2
 	mkdir /mnt/efi
-	mount "$2"2 /mnt/efi
+	mount "$DRIVE"2 /mnt/efi
 
 	# Prepare bootloader
-	genfstab -U /mnt >> /mnt/etc/fstab
 	pacstrap /mnt base grub efibootmgr
+	genfstab -U /mnt >> /mnt/etc/fstab
 	#TODO: /etc/mkinicpio.conf
 	# HOOKS=(base udev autodetect keyboard keymap consolefont modconf block encrypt lvm2 resume filesystems fsck)
 	# FILES=(/crypto_keyfile.bin)
 	#TODO: /etc/default/grub
+	LVM_BLKID=`lsblk "$DRIVE"4 -o UUID |grep "$DRIVE"4 | awk '{print $NF}'`
 	# GRUB_CMDLINE_LINUX="cryptdevice=UUID=$LVM_BLKID:cryptlvm resume=/dev/$VOL_GROUP/swap"
 	# GRUB_ENABLE_CRYPTODISK=y
 	echo "cryptboot ${2}3 /crypto_keyfile.bin luks" >> /mnt/etc/crypttab
 
 	# Install bootloader
 	arch-chroot /mnt
+	#TODO: microcode?
+	# cat /proc/cpuinfo | grep -q GenuineIntel && pacman -Syu intel-ucode
 	grub-mkconfig -o /boot/grub/grub.cfg
 	grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ARCH --recheck
-	grub-install --target=i386-pc --recheck /dev/sda
+	grub-install --target=i386-pc --recheck "$DRIVE"
 	mkinitcpio -p linux
 	chmod 600 /boot/initramfs-linux*
-	# exit #chroot
 }
 
 ##
 if [ "$1" == "format" ]; then
-	format_drive "$2"
+	format_drive
 elif [ "$1" == "mount" ]; then
-	mount_drive "$2"
+	mount_drive
 else
 	print_usage
 	exit 1
