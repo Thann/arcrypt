@@ -9,7 +9,7 @@ Utils like `wifi-menu` will probably be handy.
 
 For the partitioning steps, use arcrypt instead. download it like this:
 ```bash
-wget https://raw.githubusercontent.com/Thann/arcrypt/master/arcrypt.sh
+wget git.io/arcrypt.sh
 chmod 777 arcrypt.sh
 ```
 

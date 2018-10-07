@@ -16,12 +16,12 @@ print_usage () {
 }
 mount_drive () {
 	echo " ---- Mounting $DRIVE --"
-	cryptsetup open "$DRIVE"4 cryptlvm
+	cryptsetup open "$DRIVE_"4 cryptlvm
 	mount /dev/$VOL_GROUP/root /mnt
 	swapon /dev/$VOL_GROUP/swap
-	cryptsetup open "$DRIVE"4 cryptboot --key-file /mnt/crypto_keyfile.bin
+	cryptsetup open "$DRIVE_"4 cryptboot --key-file /mnt/crypto_keyfile.bin
 	mount /dev/mapper/cryptboot /mnt/boot
-	mount "$DRIVE"2 /mnt/efi
+	mount "$DRIVE_"2 /mnt/efi
 }
 format_drive () {
 	#TODO: explode if files in /mnt
@@ -43,8 +43,8 @@ format_drive () {
 
 	# Prepare main partition
 	echo "Set your crypto disk password"
-	cryptsetup luksFormat --type luks2 "$DRIVE"4
-	cryptsetup open "$DRIVE"4 cryptlvm
+	cryptsetup luksFormat --type luks2 "$DRIVE_"4
+	cryptsetup open "$DRIVE_"4 cryptlvm
 	pvcreate /dev/mapper/cryptlvm
 	vgcreate $VOL_GROUP /dev/mapper/cryptlvm
 	lvcreate -L $SWAP_SIZE $VOL_GROUP -n swap
@@ -57,17 +57,17 @@ format_drive () {
 	# Prepare boot partition
 	dd bs=512 count=4 if=/dev/urandom of=/mnt/crypto_keyfile.bin
 	chmod 000 /crypto_keyfile.bin
-	cryptsetup luksAddKey "$DRIVE"4 /mnt/crypto_keyfile.bin
-	cryptsetup luksFormat "$DRIVE"3 --key-file /mnt/crypto_keyfile.bin
-	cryptsetup open "$DRIVE"3 cryptboot --key-file /mnt/crypto_keyfile.bin
+	cryptsetup luksAddKey "$DRIVE_"4 /mnt/crypto_keyfile.bin
+	cryptsetup luksFormat "$DRIVE_"3 --key-file /mnt/crypto_keyfile.bin
+	cryptsetup open "$DRIVE_"3 cryptboot --key-file /mnt/crypto_keyfile.bin
 	mkfs.ext4 /dev/mapper/cryptboot
 	mkdir /mnt/boot
 	mount /dev/mapper/cryptboot /mnt/boot
 
 	# Preare efi partition
-	mkfs.fat -F32 "$DRIVE"2
+	mkfs.fat -F32 "$DRIVE_"2
 	mkdir /mnt/efi
-	mount "$DRIVE"2 /mnt/efi
+	mount "$DRIVE_"2 /mnt/efi
 
 	# Prepare bootloader
 	pacstrap /mnt base grub efibootmgr
@@ -78,7 +78,7 @@ format_drive () {
 	sed -i "s/^HOOKS=.*/$InitHooks/" /mnt/etc/mkinitcpio.conf
 	sed -i "s/^FILES=.*/$InitFile/" /mnt/etc/mkinitcpio.conf
 	# Edit /etc/default/grub
-	LVM_BLKID=`lsblk "$DRIVE"4 -o UUID |grep "$DRIVE"4 | awk '{print $NF}'`
+	LVM_BLKID=`lsblk "$DRIVE_"4 -o UUID |grep "$DRIVE_"4 | awk '{print $NF}'`
 	GRUB_CMD="GRUB_CMDLINE_LINUX=\"cryptdevice=UUID=$LVM_BLKID:cryptlvm resume=/dev/$VOL_GROUP/swap\""
 	GRUB_CRYPTO="GRUB_ENABLE_CRYPTODISK=y"
 	sed -i "s/^GRUB_CMDLINE_LINUX=.*/$GRUB_CMD/" /mnt/etc/default/grub
@@ -96,6 +96,10 @@ format_drive () {
 	mkinitcpio -p linux
 	chmod 600 /boot/initramfs-linux*
 }
+
+# Support nvme drives
+DRIVE_="$DRIVE" # Partition Prefix
+if [ $2 == /dev/nvme* ]; then DRIVE_="${DRIVE}p"; fi
 
 ##
 if [ "$1" == "format" ]; then
