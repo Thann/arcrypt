@@ -10,7 +10,7 @@ Utils like `wifi-menu` will probably be handy.
 For the partitioning steps, use arcrypt instead. download it like this:
 ```bash
 wget git.io/arcrypt.sh
-chmod 777 arcrypt.sh
+chmod +x arcrypt.sh
 ```
 
 Arcrypt format will setup a device with [full-disk encryption](https://wiki.archlinux.org/index.php/Dm-crypt/Encrypting_an_entire_system#Encrypted_boot_partition_.28GRUB.29).
