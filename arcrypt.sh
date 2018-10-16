@@ -37,10 +37,10 @@ format_drive () {
 	# Set password
 	while [ -z "$PASSWORD" ]; do
 		echo -n " == Set Password:"
-		read -q _TEMP_PWORD
+		read -s -r _TEMP_PWORD
 		echo -n " == Confirm Password:"
-		read -q _TEMP_PWORD_2
-		if [ "$_TEMP_PWORD" == "$_TEMP_PWORD_2" ]; then PASSWORD = "$_TEMP_PWORD"; fi
+		read -s -r _TEMP_PWORD_2
+		if [ "$_TEMP_PWORD" == "$_TEMP_PWORD_2" ]; then PASSWORD="$_TEMP_PWORD"; fi
 	done
 
 	# Wipe and format drive
@@ -115,7 +115,7 @@ EOF
 
 # Support nvme drives
 DRIVE_="$DRIVE" # Partition Prefix
-if [ "$2" == /dev/nvme* ]; then DRIVE_="${DRIVE}p"; fi
+if [ "$2" =~ ^/dev/nvme.*$ ]; then DRIVE_="${DRIVE}p"; fi
 
 ##
 if [ "$1" == "format" ]; then
