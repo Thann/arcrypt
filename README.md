@@ -15,7 +15,7 @@ chmod +x arcrypt.sh
 
 Arcrypt format will setup a device with [full-disk encryption](https://wiki.archlinux.org/index.php/Dm-crypt/Encrypting_an_entire_system#Encrypted_boot_partition_.28GRUB.29).
 This erases the entire drive, so be sure to have the correct one before continuing!
-Use `lsblk` to help identify the correct device,
+Use `lsblk` to help identify the correct device.
 ```bash
 ./arcrypt.sh format /dev/sdX
 ```

@@ -90,7 +90,6 @@ format_drive () {
 	sed -i "s|^HOOKS=.*|$InitHooks|" /mnt/etc/mkinitcpio.conf
 	sed -i "s|^FILES=.*|$InitFile|" /mnt/etc/mkinitcpio.conf
 	# Edit /etc/default/grub
-	#LVM_BLKID=`lsblk "$DRIVE_"4 -o UUID |grep "$DRIVE_"4 | awk '{print $NF}'`
 	LVM_BLKID=`blkid "$DRIVE_"4 | sed -n 's/.* UUID=\"\([^\"]*\)\".*/\1/p'`
 	GRUB_CMD="GRUB_CMDLINE_LINUX=\"cryptdevice=UUID=$LVM_BLKID:cryptlvm resume=/dev/$VOL_GROUP/swap\""
 	GRUB_CRYPTO="GRUB_ENABLE_CRYPTODISK=y"
@@ -115,7 +114,7 @@ EOF
 
 # Support nvme drives
 DRIVE_="$DRIVE" # Partition Prefix
-if [ "$2" =~ ^/dev/nvme.*$ ]; then DRIVE_="${DRIVE}p"; fi
+if [[ "$2" =~ ^/dev/nvme ]]; then DRIVE_="${DRIVE}p"; fi
 
 ##
 if [ "$1" == "format" ]; then
