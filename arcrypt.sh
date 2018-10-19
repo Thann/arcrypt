@@ -15,7 +15,7 @@ print_usage () {
 	echo "   arcrypt.sh mount  /dev/sdX"
 }
 mount_drive () {
-	echo " ---- Mounting $DRIVE --"
+	echo " ---- Mounting $DRIVE ----"
 	cryptsetup open "$DRIVE_"4 cryptlvm
 	sleep 1
 	mount /dev/$VOL_GROUP/root /mnt
@@ -26,7 +26,7 @@ mount_drive () {
 }
 format_drive () {
 	#TODO: explode if files in /mnt
-	echo " ---- Formatting $DRIVE --"
+	echo " ---- Formatting $DRIVE ----"
 	gdisk -l "$DRIVE"
 	echo -n ' ---- Are you sure????   type "YES" to confirm: '
 	_CONFIRM=""
@@ -37,9 +37,9 @@ format_drive () {
 	# Set password
 	while [ -z "$PASSWORD" ]; do
 		echo -n " == Set Password:"
-		read -s -r _TEMP_PWORD
+		read -s -r _TEMP_PWORD; echo
 		echo -n " == Confirm Password:"
-		read -s -r _TEMP_PWORD_2
+		read -s -r _TEMP_PWORD_2; echo
 		if [ "$_TEMP_PWORD" == "$_TEMP_PWORD_2" ]; then PASSWORD="$_TEMP_PWORD"; fi
 	done
 
@@ -85,10 +85,10 @@ format_drive () {
 	pacstrap /mnt base grub efibootmgr
 	genfstab -U /mnt >> /mnt/etc/fstab
 	# Edit /etc/mkinitcpio.conf
-	InitHooks="HOOKS=(base udev autodetect keyboard keymap consolefont modconf block encrypt lvm2 resume filesystems fsck)"
-	InitFile="FILES=(/crypto_keyfile.bin)"
-	sed -i "s|^HOOKS=.*|$InitHooks|" /mnt/etc/mkinitcpio.conf
-	sed -i "s|^FILES=.*|$InitFile|" /mnt/etc/mkinitcpio.conf
+	INIT_HOOKS="HOOKS=(base udev autodetect keyboard keymap consolefont modconf block encrypt lvm2 resume filesystems fsck)"
+	INIT_FILE="FILES=(/crypto_keyfile.bin)"
+	sed -i "s|^HOOKS=.*|$INIT_HOOKS|" /mnt/etc/mkinitcpio.conf
+	sed -i "s|^FILES=.*|$INIT_FILE|" /mnt/etc/mkinitcpio.conf
 	# Edit /etc/default/grub
 	LVM_BLKID=`blkid "$DRIVE_"4 | sed -n 's/.* UUID=\"\([^\"]*\)\".*/\1/p'`
 	GRUB_CMD="GRUB_CMDLINE_LINUX=\"cryptdevice=UUID=$LVM_BLKID:cryptlvm resume=/dev/$VOL_GROUP/swap\""
