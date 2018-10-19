@@ -7,7 +7,7 @@ boot up to it and see the [Installation Guide](https://wiki.archlinux.org/index.
 on how to get started.  
 Utils like `wifi-menu` will probably be handy.
 
-For the partitioning steps, use arcrypt instead. download it like this:
+Once you get to the partitioning steps, use arcrypt; download it like this:
 ```bash
 wget git.io/arcrypt.sh
 chmod +x arcrypt.sh
@@ -19,11 +19,7 @@ Use `lsblk` to help identify the correct device.
 ```bash
 ./arcrypt.sh format /dev/sdX
 ```
-This will also do the `mount`, `pacstrap`, `genfstab` and `arch-chroot` install-steps for you;
-continue with ["Time zone"](https://wiki.archlinux.org/index.php/installation_guide#Configure_the_system).  
-You can also skip installing a `bootloader` later.
-
-If you need to mount again in the future do `./arcrypt.sh mount /dev/sdX`
+Once you answer some questions, it will do most of the steps in the install guide.
 
 This will leave you with a drive partitioned like this:
 ```
@@ -36,5 +32,7 @@ sda                   8:0      0   200G  0 disk
 └─sda4                8:4      0   100G  0 part
   └─cryptlvm          254:1    0   100G  0 crypt
     ├─Arcrypt-swap    254:2    0    16G  0 lvm   [SWAP]
-    └─Arcrypt-root    254:3    0    84G  0 lvm   /
+    └─Arcrypt-root    254:3    0 183.2G  0 lvm   /
 ```
+
+If you need to mount again in the future use `./arcrypt.sh mount /dev/sdX`
