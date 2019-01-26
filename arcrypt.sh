@@ -134,8 +134,13 @@ format_drive () {
     sed -i "s|^#GRUB_ENABLE_CRYPTODISK=.*|$GRUB_CRYPTO|" /mnt/etc/default/grub
     echo "cryptboot ${DRIVE_}3 /crypto_keyfile.bin luks" >> /mnt/etc/crypttab
 
+    #HACK: to fix issue w/ LVM
+    mkdir /mnt/hostlvm
+    mount --bind /run/lvm /mnt/hostlvm
+
     arch-chroot /mnt <<- EOF
         set -o errexit
+        ln -s /hostlvm /run/lvm
         hwclock --systohc
         echo "root:$ROOT_PASSWORD" | /usr/sbin/chpasswd
         useradd -m -g users "$_USERNAME"
