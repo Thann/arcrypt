@@ -4,7 +4,6 @@
 DRIVE="$2"
 SWAP_SIZE="${SWAP_SIZE-16G}"
 VOL_GROUP="${VOL_GROUP-Arcrypt}"
-SHRED_ITERATIONS="${SHRED_ITERATIONS-1}"
 
 # Exit on any error
 set -o errexit
@@ -32,6 +31,10 @@ format_drive () {
     _CONFIRM=""
     read _CONFIRM
     if [ "$_CONFIRM" != "YES" ]; then exit 1; fi
+
+    echo -n " == Shred iterations [1]: "
+    read SHRED_ITERATIONS
+    SHRED_ITERATIONS="${SHRED_ITERATIONS-1}"
 
     # Collect Setup params
     PASSWORD=""
@@ -114,6 +117,7 @@ format_drive () {
     # Prepare bootloader
     sed -i '6i Server = http://mirrors.kernel.org/archlinux/$repo/os/$arch' /etc/pacman.d/mirrorlist
     timedatectl set-ntp true
+    pacman -Sy archlinux-keyring --noconfirm
     pacstrap /mnt base grub efibootmgr
     genfstab -U /mnt >> /mnt/etc/fstab
     # Edit /etc/mkinitcpio.conf
