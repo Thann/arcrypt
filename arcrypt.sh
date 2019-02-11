@@ -34,7 +34,7 @@ format_drive () {
 
     echo -n " == Shred iterations [1]: "
     read SHRED_ITERATIONS
-    SHRED_ITERATIONS="${SHRED_ITERATIONS-1}"
+    SHRED_ITERATIONS="${SHRED_ITERATIONS:-1}"
 
     # Collect Setup params
     PASSWORD=""
@@ -158,6 +158,7 @@ format_drive () {
         cat /proc/cpuinfo | grep -q GenuineIntel && pacman -S intel-ucode --noconfirm
         cat /proc/cpuinfo | grep -q AuthenticAMD && pacman -S amd-ucode --noconfirm
         # Install bootloaders
+        mkdir /boot/grub
         grub-mkconfig -o /boot/grub/grub.cfg
         grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ARCH --recheck
         grub-install --target=i386-pc --recheck "$DRIVE"
