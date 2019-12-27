@@ -102,7 +102,7 @@ format_drive () {
 
     # Prepare boot partition
     chmod 000 /mnt/crypto_keyfile.bin
-    cryptsetup luksFormat "$DRIVE_"3 -q --key-file /mnt/crypto_keyfile.bin
+    cryptsetup luksFormat "$DRIVE_"3 --type luks1 -q --key-file /mnt/crypto_keyfile.bin
     cryptsetup luksAddKey "$DRIVE_"3 -q --key-file /mnt/crypto_keyfile.bin <<< "$PASSWORD"
     cryptsetup open "$DRIVE_"3 cryptboot --key-file /mnt/crypto_keyfile.bin
     mkfs.ext4 /dev/mapper/cryptboot
@@ -118,7 +118,7 @@ format_drive () {
     sed -i '6i Server = http://mirrors.kernel.org/archlinux/$repo/os/$arch' /etc/pacman.d/mirrorlist
     timedatectl set-ntp true
     pacman -Sy archlinux-keyring --noconfirm
-    pacstrap /mnt base grub efibootmgr linux linux-firmware
+    pacstrap /mnt base grub efibootmgr lvm2 linux linux-firmware
     genfstab -U /mnt >> /mnt/etc/fstab
     # Edit /etc/mkinitcpio.conf
     INIT_HOOKS="HOOKS=(base udev autodetect keyboard keymap consolefont modconf block encrypt lvm2 resume filesystems fsck)"
