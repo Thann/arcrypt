@@ -118,7 +118,7 @@ format_drive () {
     sed -i '6i Server = http://mirrors.kernel.org/archlinux/$repo/os/$arch' /etc/pacman.d/mirrorlist
     timedatectl set-ntp true
     pacman -Sy archlinux-keyring --noconfirm
-    pacstrap /mnt base grub efibootmgr
+    pacstrap /mnt base grub efibootmgr linux linux-firmware
     genfstab -U /mnt >> /mnt/etc/fstab
     # Edit /etc/mkinitcpio.conf
     INIT_HOOKS="HOOKS=(base udev autodetect keyboard keymap consolefont modconf block encrypt lvm2 resume filesystems fsck)"
