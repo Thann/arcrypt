@@ -14,6 +14,7 @@ print_usage () {
     echo "   arcrypt.sh mount  /dev/sdX"
 }
 mount_drive () {
+    # TODO: check partitions to see if old or new format
     echo " ---- Mounting $DRIVE ----"
     cryptsetup open "$DRIVE_"4 cryptlvm
     sleep 1
@@ -45,6 +46,7 @@ format_drive () {
         read -s -r _TEMP_PWORD_2; echo
         if [ "$_TEMP_PWORD" == "$_TEMP_PWORD_2" ]; then PASSWORD="$_TEMP_PWORD"; fi
     done
+    # TODO: blank password == skip encrypting
     ROOT_PASSWORD=""
     while [ -z "$ROOT_PASSWORD" ]; do
         echo -n " == Set ROOT password: "
@@ -65,11 +67,15 @@ format_drive () {
     done
     echo -n " == Set hostname: "
     read _HOSTNAME
+    # TODO: autocomplete?
     echo -n " == Set locale [en_US.UTF-8]: "
     read _LOCALE
     _LOCALE="${_LOCALE:-en_US.UTF-8}"
     echo -n " == Set timezone [America/Los_Angeles]: "
-    read _TIMEZONE
+    pushd '/usr/share/zoneinfo' # autocomplete
+    read -e _TIMEZONE
+    # TODO: verify timezone and retry
+    popd
     _TIMEZONE="${_TIMEZONE:-America/Los_Angeles}"
     #TODO: keymap?
     echo -n " == Install Gnome desktop? (Y/n): "
@@ -79,9 +85,12 @@ format_drive () {
     # Wipe and format drive
     shred -v -n$SHRED_ITERATIONS "$DRIVE"
     sgdisk -o "$DRIVE"
+    # TODO: if USE_GRUB:
     sgdisk -n 1:0:+1M -t 1:ef02 -c 1:"BIOS Boot Partition" "$DRIVE"
     sgdisk -n 2:0:+550M -t 2:ef00 -c 2:"EFI System Partition" "$DRIVE"
     sgdisk -n 3:0:+200M -t 3:8300 -c 3:"Boot partition" "$DRIVE"
+    # TODO: else:
+    #sgdisk -n 1:0:+200M -t 3:8300 -c 3:"Boot partition" "$DRIVE"
     sgdisk -n 4:0:0 -t 4:8e00 -c 4:"$VOL_GROUP LVM" "$DRIVE"
     sgdisk -p "$DRIVE"
 
@@ -127,12 +136,8 @@ format_drive () {
     sed -i "s|^FILES=.*|$INIT_FILE|" /mnt/etc/mkinitcpio.conf
     # Edit /etc/default/grub
     LVM_BLKID=`blkid "$DRIVE_"4 | sed -n 's/.* UUID=\"\([^\"]*\)\".*/\1/p'`
-    GRUB_CMD="GRUB_CMDLINE_LINUX=\"cryptdevice=UUID=$LVM_BLKID:cryptlvm resume=/dev/$VOL_GROUP/swap\""
+    GRUB_CMD="GRUB_CMDLINE_LINUX=\\\"cryptdevice=UUID=$LVM_BLKID:cryptlvm resume=/dev/$VOL_GROUP/swap\\\""
     GRUB_CRYPTO="GRUB_ENABLE_CRYPTODISK=y"
-    sed -i "s|^GRUB_TIMEOUT=.*|GRUB_TIMEOUT=1|" /mnt/etc/default/grub
-    sed -i "s|^GRUB_CMDLINE_LINUX=.*|$GRUB_CMD|" /mnt/etc/default/grub
-    sed -i "s|^#GRUB_ENABLE_CRYPTODISK=.*|$GRUB_CRYPTO|" /mnt/etc/default/grub
-    echo "cryptboot ${DRIVE_}3 /crypto_keyfile.bin luks" >> /mnt/etc/crypttab
 
     #HACK: to fix issue w/ LVM
     mkdir /mnt/hostlvm
@@ -141,6 +146,11 @@ format_drive () {
     arch-chroot /mnt <<- EOF
         set -o errexit
         ln -s /hostlvm /run/lvm
+        pacman -Syu grub efibootmgr --noconfirm
+        sed -i "s|^GRUB_TIMEOUT=.*|GRUB_TIMEOUT=1|" /etc/default/grub
+        sed -i "s|^GRUB_CMDLINE_LINUX=.*|$GRUB_CMD|" /etc/default/grub
+        sed -i "s|^#GRUB_ENABLE_CRYPTODISK=.*|$GRUB_CRYPTO|" /etc/default/grub
+        echo "cryptboot ${DRIVE_}3 /crypto_keyfile.bin luks" >> /etc/crypttab
         hwclock --systohc
         echo "root:$ROOT_PASSWORD" | /usr/sbin/chpasswd
         useradd -m -g users "$_USERNAME"
@@ -177,7 +187,10 @@ DRIVE_="$DRIVE" # Partition Prefix
 if [[ "$2" =~ ^/dev/nvme ]]; then DRIVE_="${DRIVE}p"; fi
 
 ##
-if [ "$1" == "format" ]; then
+if [ "$1" == "format-grub" ]; then
+    USE_GRUB=true
+    format_drive
+elif [ "$1" == "format" ]; then
     format_drive
 elif [ "$1" == "mount" ]; then
     mount_drive
